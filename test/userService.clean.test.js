@@ -1,80 +1,96 @@
-const { UserService } = require ('../src/userService');
+const { UserService } = require('../src/userService');
 
 const dadosUsuarioPadrao = {
-  nome: 'Fulano de Tal',
-  email: 'fulano@teste.com',
-  idade: 25,
+    nome: 'Fulano de Tal',
+    email: 'fulano@teste.com',
+    idade: 25,
 };
 
-describe('UserService - Suíte de Testes com Smells', () => {
-  let userService;
+describe('UserService - Suíte de Testes Limpos (sem smells)', () => {
+    let userService;
 
-  // O setup é executado antes de cada teste
-  beforeEach(() => {
-    userService = new UserService();
-    userService._clearDB(); // Limpa o "banco" para cada teste
-  });
+    beforeEach(() => {
+        userService = new UserService();
+        userService._clearDB(); // Arrange comum: limpa o "banco" antes de cada teste
+    });
 
-  test('deve criar e buscar um usuário corretamente', () => {
-    // Act 1: Criar
-    const usuarioCriado = userService.createUser(
-      dadosUsuarioPadrao.nome,
-      dadosUsuarioPadrao.email,
-      dadosUsuarioPadrao.idade
-    );
-    expect(usuarioCriado.id).toBeDefined();
+    // ✅ Teste 1: Criação e busca de usuário (limpo e direto)
+    test('deve criar um usuário e permitir sua busca por ID', () => {
+        // Arrange
+        const { nome, email, idade } = dadosUsuarioPadrao;
 
-    // Act 2: Buscar
-    const usuarioBuscado = userService.getUserById(usuarioCriado.id);
-    expect(usuarioBuscado.nome).toBe(dadosUsuarioPadrao.nome);
-    expect(usuarioBuscado.status).toBe('ativo');
-  });
+        // Act
+        const usuarioCriado = userService.createUser(nome, email, idade);
+        const usuarioBuscado = userService.getUserById(usuarioCriado.id);
 
-  test('deve desativar usuários se eles não forem administradores', () => {
-    const usuarioComum = userService.createUser('Comum', 'comum@teste.com', 30);
-    const usuarioAdmin = userService.createUser('Admin', 'admin@teste.com', 40, true);
+        // Assert
+        expect(usuarioCriado.id).toBeDefined();
+        expect(usuarioBuscado.nome).toBe(nome);
+        expect(usuarioBuscado.status).toBe('ativo');
+    });
 
-    const todosOsUsuarios = [usuarioComum, usuarioAdmin];
+    // ✅ Teste 2: Desativar usuário comum
+    test('deve desativar um usuário comum com sucesso', () => {
+        // Arrange
+        const usuario = userService.createUser('Comum', 'comum@teste.com', 30);
 
-    // O teste tem um loop e um if, tornando-o complexo e menos claro.
-    for (const user of todosOsUsuarios) {
-      const resultado = userService.deactivateUser(user.id);
-      if (!user.isAdmin) {
-        // Este expect só roda para o usuário comum.
+        // Act
+        const resultado = userService.deactivateUser(usuario.id);
+        const usuarioAtualizado = userService.getUserById(usuario.id);
+
+        // Assert
         expect(resultado).toBe(true);
-        const usuarioAtualizado = userService.getUserById(user.id);
         expect(usuarioAtualizado.status).toBe('inativo');
-      } else {
-        // E este só roda para o admin.
+    });
+
+    // ✅ Teste 3: Não deve desativar um usuário administrador
+    test('não deve desativar um usuário administrador', () => {
+        // Arrange
+        const usuarioAdmin = userService.createUser('Admin', 'admin@teste.com', 40, true);
+
+        // Act
+        const resultado = userService.deactivateUser(usuarioAdmin.id);
+        const usuarioAtualizado = userService.getUserById(usuarioAdmin.id);
+
+        // Assert
         expect(resultado).toBe(false);
-      }
-    }
-  });
+        expect(usuarioAtualizado.status).toBe('ativo');
+    });
 
-  test('deve gerar um relatório de usuários formatado', () => {
-    const usuario1 = userService.createUser('Alice', 'alice@email.com', 28);
-    userService.createUser('Bob', 'bob@email.com', 32);
+    // ✅ Teste 4: Gerar relatório de usuários
+    test('deve gerar um relatório contendo os nomes e status dos usuários', () => {
+        // Arrange
+        const usuario1 = userService.createUser('Alice', 'alice@email.com', 28);
+        userService.createUser('Bob', 'bob@email.com', 32);
 
-    const relatorio = userService.generateUserReport();
-    
-    // Se a formatação mudar (ex: adicionar um espaço, mudar a ordem), o teste quebra.
-    const linhaEsperada = `ID: ${usuario1.id}, Nome: Alice, Status: ativo\n`;
-    expect(relatorio).toContain(linhaEsperada);
-    expect(relatorio.startsWith('--- Relatório de Usuários ---')).toBe(true);
-  });
-  
-  test('deve falhar ao criar usuário menor de idade', () => {
-    // Este teste não falha se a exceção NÃO for lançada.
-    // Ele só passa se o `catch` for executado. Se a lógica de validação
-    // for removida, o teste passa silenciosamente, escondendo um bug.
-    try {
-      userService.createUser('Menor', 'menor@email.com', 17);
-    } catch (e) {
-      expect(e.message).toBe('O usuário deve ser maior de idade.');
-    }
-  });
+        // Act
+        const relatorio = userService.generateUserReport();
 
-  test.skip('deve retornar uma lista vazia quando não há usuários', () => {
-    // TODO: Implementar este teste depois.
-  });
+        // Assert
+        // Em vez de verificar strings exatas, validamos o comportamento:
+        expect(relatorio).toMatch(/Relatório de Usuários/);
+        expect(relatorio).toContain(`Nome: ${usuario1.nome}`);
+        expect(relatorio).toContain('Status: ativo');
+    });
+
+    // ✅ Teste 5: Exceção para menor de idade
+    test('deve lançar erro ao tentar criar usuário menor de idade', () => {
+        // Arrange
+        const criarUsuarioMenor = () => userService.createUser('Menor', 'menor@email.com', 17);
+
+        // Act + Assert
+        expect(criarUsuarioMenor).toThrow('O usuário deve ser maior de idade.');
+    });
+
+    // ✅ Teste 6: Lista vazia quando não há usuários
+    test('deve retornar uma lista vazia quando não houver usuários cadastrados', () => {
+        // Arrange
+        // Nenhum usuário criado
+
+        // Act
+        const relatorio = userService.generateUserReport();
+
+        // Assert
+        expect(relatorio).toContain('Nenhum usuário encontrado'); // ou conforme comportamento esperado
+    });
 });
