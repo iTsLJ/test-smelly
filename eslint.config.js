@@ -1,16 +1,27 @@
-import js from "@eslint/js";
-import jestPlugin from "eslint-plugin-jest";
+const js = require("@eslint/js");
+const jestPlugin = require("eslint-plugin-jest");
 
-export default [
+module.exports = [
     js.configs.recommended,
     {
         files: ["**/*.js"],
+        ignores: ["node_modules/**"],
         languageOptions: {
             ecmaVersion: "latest",
-            sourceType: "module",
+            sourceType: "commonjs",
             globals: {
+                require: true,
+                module: true,
+                __dirname: true,
+                console: true,
+                process: true,
+                describe: true,
+                test: true,
+                it: true,
+                expect: true,
+                beforeEach: true,
+                afterEach: true,
                 jest: true,
-                node: true,
             },
         },
         plugins: {
@@ -20,6 +31,7 @@ export default [
             "jest/no-disabled-tests": "warn",
             "jest/no-conditional-expect": "error",
             "jest/no-identical-title": "error",
+            "no-undef": "off",
         },
     },
 ];
